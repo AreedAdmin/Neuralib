@@ -1,0 +1,54 @@
+/* Daylight Study — light, energizing palette
+ * Source of truth for colors. Imported by app/globals.css and referenced via Tailwind utilities.
+ * Hard rule: body text always uses --color-ink on a surface >= --color-cream-2.
+ */
+
+@theme {
+  /* Surfaces */
+  --color-cream-1: #fff8f0;        /* app background */
+  --color-cream-2: #fffdf7;        /* card / panel */
+  --color-cream-3: #faf3e6;        /* sunken (search bar, code) */
+
+  /* Text */
+  --color-ink: #1f2933;            /* body, headings */
+  --color-ink-muted: #5c6470;      /* meta, labels */
+
+  /* Borders */
+  --color-edge: #e9dfcb;
+
+  /* Accents */
+  --color-coral: #ff7a59;          /* primary action */
+  --color-coral-soft: #ffd6c8;     /* hover / chip background */
+  --color-mint: #3ccb7f;           /* success, "compiled" */
+  --color-mint-soft: #c8eed7;
+  --color-sky: #4db8e8;            /* links, see-also */
+  --color-sky-soft: #c8e7f7;
+  --color-sunshine: #ffd93d;       /* search hits, highlight */
+  --color-warning: #ffb347;        /* draft / unpublished */
+
+  /* Subject palette — 8-color rotation for subject chips */
+  --color-subject-1: #ff7a59;      /* coral */
+  --color-subject-2: #ffb347;      /* amber */
+  --color-subject-3: #ffd93d;      /* sunshine */
+  --color-subject-4: #c7e04d;      /* lime */
+  --color-subject-5: #3ccb7f;      /* mint */
+  --color-subject-6: #4db8a8;      /* teal */
+  --color-subject-7: #4db8e8;      /* sky */
+  --color-subject-8: #b58cff;      /* lilac */
+
+  /* Type */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue",
+               Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+  --font-serif: ui-serif, Georgia, "Iowan Old Style", "Apple Garamond", serif;
+
+  /* Radii */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+
+  /* Shadows — soft, warm */
+  --shadow-soft: 0 1px 2px rgba(31, 41, 51, 0.04), 0 4px 12px rgba(31, 41, 51, 0.06);
+  --shadow-lift: 0 2px 4px rgba(31, 41, 51, 0.06), 0 12px 24px rgba(31, 41, 51, 0.08);
+}

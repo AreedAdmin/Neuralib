@@ -1,0 +1,148 @@
+% Neurolib starter preamble
+% Curated for graph algorithms / network science / linear algebra notes.
+% Bumping a substantive change here invalidates every cached PDF (see PREAMBLE_VERSION).
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% Math
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
+
+% Theorem environments
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{example}[definition]{Example}
+
+\theoremstyle{plain}
+\newtheorem{theorem}[definition]{Theorem}
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{corollary}[definition]{Corollary}
+
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+\newtheorem*{note}{Note}
+
+% TikZ / PGF for diagrams
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{tikz-cd}
+\pgfplotsset{compat=1.18}
+% Note: graphdrawing libraries (\usegdlibrary{layered, force, trees}) require
+% LuaTeX. Tectonic uses XeTeX, so they're not loaded here. The `graphs` library
+% gives you declarative graph syntax; for auto-layout, position nodes manually
+% with `positioning`/`calc` or switch to a TeX Live + lualatex toolchain.
+\usetikzlibrary{
+  graphs,
+  arrows.meta,
+  positioning,
+  calc,
+  decorations.pathreplacing,
+  shapes,
+  shapes.geometric,
+  quotes,
+  fit,
+  matrix
+}
+
+% References / hyperlinks (load near the end)
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+
+% Page geometry — comfortable single-column reading
+\usepackage[a4paper, margin=1in]{geometry}
+\setlength{\parskip}{0.6em}
+\setlength{\parindent}{0pt}
+
+% --- Neurolib brand --------------------------------------------------------
+\usepackage{xcolor}
+
+\definecolor{neuroink}{HTML}{1F2933}
+\definecolor{neurocoral}{HTML}{FF7A59}
+\definecolor{neuromuted}{HTML}{5C6470}
+\definecolor{neurosky}{HTML}{4DB8E8}
+\definecolor{neuromint}{HTML}{3CCB7F}
+\definecolor{neurosunshine}{HTML}{FFD93D}
+\definecolor{neurocream}{HTML}{FFFDF7}
+
+% Logo: an open book viewed from above with a small knowledge graph on each
+% page. Recreates public/logo.svg in TikZ so no image asset is needed.
+% Optional argument scales it (default 1cm unit).
+\newcommand{\neurolibLogo}[1][1]{%
+  \begin{tikzpicture}[
+    x=#1 cm, y=#1 cm,
+    line cap=round, line join=round
+  ]
+    % Pages
+    \filldraw[fill=neurocream, draw=neuroink, line width=0.6pt]
+      (-1.50, -0.85) -- (-0.05, -1.00) -- (-0.05, 1.00) -- (-1.45, 0.85) -- cycle;
+    \filldraw[fill=neurocream, draw=neuroink, line width=0.6pt]
+      ( 1.50, -0.85) -- ( 0.05, -1.00) -- ( 0.05, 1.00) -- ( 1.45, 0.85) -- cycle;
+    % Spine
+    \draw[neuroink, line width=0.6pt] (0, -1.00) -- (0, 1.00);
+
+    % Page-internal edges
+    \draw[neuromuted, line width=0.3pt]
+      (-1.10, 0.50) -- (-0.70, 0) -- (-1.05, -0.50) -- cycle;
+    \draw[neuromuted, line width=0.3pt]
+      ( 1.10, 0.50) -- ( 0.70, 0) -- ( 1.05, -0.50) -- cycle;
+
+    % Spine-crossing dashed edges
+    \draw[neurocoral, dash pattern=on 0.4pt off 0.8pt, line width=0.3pt]
+      (-1.10, 0.50) -- (0, 0.70);
+    \draw[neurocoral, dash pattern=on 0.4pt off 0.8pt, line width=0.3pt]
+      (-0.70, 0)    -- (0, 0);
+    \draw[neurocoral, dash pattern=on 0.4pt off 0.8pt, line width=0.3pt]
+      (-1.05, -0.50) -- (0, -0.70);
+    \draw[neurocoral, dash pattern=on 0.4pt off 0.8pt, line width=0.3pt]
+      ( 1.10, 0.50) -- (0, 0.70);
+    \draw[neurocoral, dash pattern=on 0.4pt off 0.8pt, line width=0.3pt]
+      ( 0.70, 0)    -- (0, 0);
+    \draw[neurocoral, dash pattern=on 0.4pt off 0.8pt, line width=0.3pt]
+      ( 1.05, -0.50) -- (0, -0.70);
+
+    % All nodes: coral
+    \filldraw[fill=neurocoral, draw=neuroink, line width=0.25pt]
+      (0,  0.70) circle (0.085);
+    \filldraw[fill=neurocoral, draw=neuroink, line width=0.25pt]
+      (0,  0)    circle (0.075);
+    \filldraw[fill=neurocoral, draw=neuroink, line width=0.25pt]
+      (0, -0.70) circle (0.085);
+    \filldraw[fill=neurocoral, draw=neuroink, line width=0.25pt]
+      (-1.10,  0.50) circle (0.080);
+    \filldraw[fill=neurocoral, draw=neuroink, line width=0.25pt]
+      (-0.70,  0)    circle (0.080);
+    \filldraw[fill=neurocoral, draw=neuroink, line width=0.25pt]
+      (-1.05, -0.50) circle (0.080);
+    \filldraw[fill=neurocoral, draw=neuroink, line width=0.25pt]
+      ( 1.10,  0.50) circle (0.080);
+    \filldraw[fill=neurocoral, draw=neuroink, line width=0.25pt]
+      ( 0.70,  0)    circle (0.080);
+    \filldraw[fill=neurocoral, draw=neuroink, line width=0.25pt]
+      ( 1.05, -0.50) circle (0.080);
+  \end{tikzpicture}%
+}
+
+% Cover page used by every compile (single card + composition).
+% Args: 1 = title, 2 = subtitle (subject path or composition kind).
+\newcommand{\neurolibCover}[2]{%
+  \begin{titlepage}
+    \centering
+    \vspace*{2cm}%
+    \neurolibLogo[1.6]%
+    \par\vspace{0.6em}%
+    {\color{neurocoral}\textsc{\fontsize{14pt}{16pt}\selectfont Neurolib}}%
+    \par\vspace{3.5cm}%
+    {\fontsize{32pt}{38pt}\selectfont\bfseries\color{neuroink} #1\par}%
+    \vspace{1.2cm}%
+    {\color{neuromuted}\fontsize{15pt}{19pt}\selectfont #2\par}%
+    \vfill
+    {\color{neuromuted}\fontsize{11pt}{13pt}\selectfont \today\par}%
+    \vspace{2cm}%
+  \end{titlepage}%
+}
