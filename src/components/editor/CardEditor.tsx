@@ -1,18 +1,23 @@
 "use client";
 
+import { autocompletion } from "@codemirror/autocomplete";
 import { StreamLanguage } from "@codemirror/language";
 import { stex } from "@codemirror/legacy-modes/mode/stex";
-import { EditorView } from "@codemirror/view";
+import { Prec } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
 import CodeMirror, { type Extension } from "@uiw/react-codemirror";
-import { ChevronLeft, PanelLeftClose } from "lucide-react";
+import { ChevronLeft, Maximize2, Minimize2, PanelLeftClose } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CardLinksPanel } from "@/components/cards/CardLinksPanel";
 import { CardTagBar } from "@/components/cards/CardTagBar";
 import { autosaveCard } from "@/lib/actions/cards";
 import type { LinkedCard } from "@/lib/db/links";
 import type { Enums } from "@/lib/supabase/types";
+import { useFocusMode } from "@/stores/focus-mode";
+import { InlineComposer, type InlineComposerCtx } from "./InlineComposer";
+import { latexCompletions } from "./latexCompletions";
 
 type TagLite = { id: string; name: string; color: string | null };
 type CardOption = { id: string; title: string; subjectName: string };
@@ -62,7 +67,18 @@ const daylight = EditorView.theme(
   { dark: false }
 );
 
-const extensions: Extension[] = [stexLang, daylight, EditorView.lineWrapping];
+const baseExtensions: Extension[] = [
+  stexLang,
+  daylight,
+  EditorView.lineWrapping,
+  autocompletion({
+    override: [latexCompletions],
+    activateOnTyping: true,
+    icons: true,
+    closeOnBlur: true,
+    maxRenderedOptions: 30,
+  }),
+];
 
 type SaveStatus =
   | { kind: "idle"; savedAt: Date | null }
@@ -102,8 +118,61 @@ export function CardEditor({
     kind: "idle",
     savedAt: new Date(initial.updatedAt),
   });
+  const [composer, setComposer] = useState<InlineComposerCtx | null>(null);
+  const focusMode = useFocusMode((s) => s.on);
+  const toggleFocusMode = useFocusMode((s) => s.toggle);
   const [, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorViewRef = useRef<EditorView | null>(null);
+  const openComposerRef = useRef<(ctx: InlineComposerCtx) => void>(() => {});
+  openComposerRef.current = (ctx) => setComposer(ctx);
+
+  const inlineKeymap = useMemo(
+    () =>
+      Prec.highest(
+        keymap.of([
+          {
+            key: "Mod-i",
+            preventDefault: true,
+            run: (view) => {
+              const sel = view.state.selection.main;
+              const selectionText = view.state.doc.sliceString(sel.from, sel.to);
+              openComposerRef.current({
+                cardId: initial.id,
+                from: sel.from,
+                to: sel.to,
+                selectionText,
+              });
+              return true;
+            },
+          },
+        ])
+      ),
+    [initial.id]
+  );
+
+  const extensions = useMemo<Extension[]>(
+    () => [...baseExtensions, inlineKeymap],
+    [inlineKeymap]
+  );
+
+  function handleInsertFromComposer(text: string) {
+    const view = editorViewRef.current;
+    if (!view || !composer) {
+      setComposer(null);
+      return;
+    }
+    const docLen = view.state.doc.length;
+    const from = Math.min(composer.from, docLen);
+    const to = Math.min(composer.to, docLen);
+    view.dispatch({
+      changes: { from, to, insert: text },
+      selection: { anchor: from + text.length },
+      scrollIntoView: true,
+    });
+    view.focus();
+    setComposer(null);
+  }
 
   const save = useCallback(
     (next: { content: string; title?: string }, manual: boolean) => {
@@ -197,6 +266,19 @@ export function CardEditor({
           className="flex-1 truncate bg-transparent text-lg font-semibold text-(--color-ink) outline-none placeholder:text-(--color-ink-muted)"
         />
         <SaveStatusBadge status={status} />
+        <button
+          type="button"
+          onClick={toggleFocusMode}
+          aria-label={focusMode ? "Exit focus mode (⌘.)" : "Focus mode (⌘.)"}
+          title={focusMode ? "Exit focus mode (⌘.)" : "Focus mode (⌘.)"}
+          className="flex size-8 items-center justify-center rounded-(--radius-xs) text-(--color-ink-muted) hover:bg-(--color-cream-3) hover:text-(--color-ink)"
+        >
+          {focusMode ? (
+            <Minimize2 className="size-4" />
+          ) : (
+            <Maximize2 className="size-4" />
+          )}
+        </button>
         {onToggleEditor ? (
           <button
             type="button"
@@ -221,12 +303,15 @@ export function CardEditor({
           value={content}
           onChange={onContentChange}
           extensions={extensions}
+          onCreateEditor={(view) => {
+            editorViewRef.current = view;
+          }}
           basicSetup={{
             lineNumbers: true,
             highlightActiveLine: true,
             highlightActiveLineGutter: true,
             foldGutter: false,
-            autocompletion: true,
+            autocompletion: false,
             bracketMatching: true,
             closeBrackets: true,
             indentOnInput: true,
@@ -242,6 +327,17 @@ export function CardEditor({
         incoming={links.incoming}
         availableCards={links.availableCards}
       />
+
+      {composer ? (
+        <InlineComposer
+          ctx={composer}
+          onInsert={handleInsertFromComposer}
+          onClose={() => {
+            setComposer(null);
+            editorViewRef.current?.focus();
+          }}
+        />
+      ) : null}
     </section>
   );
 }

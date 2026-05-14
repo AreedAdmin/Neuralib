@@ -6,6 +6,7 @@ import { CardEditor } from "@/components/editor/CardEditor";
 import { PdfPreview } from "@/components/preview/PdfPreview";
 import type { LinkedCard } from "@/lib/db/links";
 import type { Enums } from "@/lib/supabase/types";
+import { useFocusMode } from "@/stores/focus-mode";
 
 export type PreviewState =
   | { kind: "empty" }
@@ -52,8 +53,12 @@ export function CardWorkspace({
 }) {
   const [preview, setPreview] = useState<PreviewState>({ kind: "empty" });
   const [editorOpen, setEditorOpen] = useState(true);
+  const focusMode = useFocusMode((s) => s.on);
 
   const toggleEditor = useCallback(() => setEditorOpen((v) => !v), []);
+
+  const showEditor = editorOpen || focusMode;
+  const showPreview = !focusMode;
 
   // Cmd+\ / Ctrl+\ → toggle editor pane
   useEffect(() => {
@@ -124,25 +129,27 @@ export function CardWorkspace({
   return (
     <main
       className={`grid h-screen gap-0 ${
-        editorOpen ? "grid-cols-2" : "grid-cols-1"
+        showEditor && showPreview ? "grid-cols-2" : "grid-cols-1"
       }`}
     >
-      {editorOpen ? (
+      {showEditor ? (
         <CardEditor
           initial={initial}
           subject={subject}
           tags={tags}
           links={links}
           onCompile={compile}
+          onToggleEditor={focusMode ? undefined : toggleEditor}
+        />
+      ) : null}
+      {showPreview ? (
+        <PdfPreview
+          state={preview}
+          onRecompile={compile}
+          editorOpen={editorOpen}
           onToggleEditor={toggleEditor}
         />
       ) : null}
-      <PdfPreview
-        state={preview}
-        onRecompile={compile}
-        editorOpen={editorOpen}
-        onToggleEditor={toggleEditor}
-      />
     </main>
   );
 }
