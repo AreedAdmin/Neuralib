@@ -17,6 +17,7 @@ import type { LinkedCard } from "@/lib/db/links";
 import type { Enums } from "@/lib/supabase/types";
 import { useFocusMode } from "@/stores/focus-mode";
 import { InlineComposer, type InlineComposerCtx } from "./InlineComposer";
+import { inlineSuggestions } from "./inlineSuggestion";
 import { latexCompletions } from "./latexCompletions";
 
 type TagLite = { id: string; name: string; color: string | null };
@@ -78,6 +79,7 @@ const baseExtensions: Extension[] = [
     closeOnBlur: true,
     maxRenderedOptions: 30,
   }),
+  inlineSuggestions(),
 ];
 
 type SaveStatus =

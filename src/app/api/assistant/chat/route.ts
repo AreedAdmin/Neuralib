@@ -1,7 +1,6 @@
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { convertToCoreMessages, streamText, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
-import { CHAT_MODEL, OLLAMA_BASE_URL } from "@/lib/ai/ollama";
+import { CHAT_MODEL, ollamaProvider } from "@/lib/ai/ollama";
 import { SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
 import { tools } from "@/lib/ai/tools";
 import { createClient } from "@/lib/supabase/server";
@@ -12,90 +11,6 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 // Force dynamic so Next.js never tries to cache or buffer the streaming body.
 export const dynamic = "force-dynamic";
-
-// Use Ollama's OpenAI-compatible endpoint (/v1/chat/completions) instead of
-// the dedicated ollama-ai-provider. The third-party provider silently drops
-// Gemma's tool calls (`messages=0` despite the model emitting completion
-// tokens). Ollama's /v1 endpoint emits standard `tool_calls` arrays which the
-// AI SDK handles natively.
-//
-// Gemma quirk: every streamed chunk arrives with `delta.content === ""` and
-// the actual text in `delta.reasoning`. The AI SDK only watches `content`, so
-// without the rewrite stream below the UI sees nothing until the final burst.
-// `think: false` does NOT disable this — Ollama's OpenAI proxy maps Gemma's
-// generation into `reasoning` regardless. We promote it back into `content`.
-const ollama = createOpenAICompatible({
-  name: "ollama",
-  baseURL: `${OLLAMA_BASE_URL}/v1`,
-  apiKey: "ollama",
-  fetch: rewriteReasoningAsContent,
-});
-
-const SSE_LINE_RE = /^data: (.+)$/gm;
-
-async function rewriteReasoningAsContent(
-  url: string | URL | Request,
-  init?: RequestInit
-): Promise<Response> {
-  const res = await fetch(url, init);
-  const ct = res.headers.get("content-type") ?? "";
-  if (!res.body || !ct.includes("text/event-stream")) {
-    return res;
-  }
-
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  // Buffer partial SSE lines across chunk boundaries.
-  let buffered = "";
-
-  const transform = new TransformStream<Uint8Array, Uint8Array>({
-    transform(chunk, controller) {
-      buffered += decoder.decode(chunk, { stream: true });
-      // Process complete lines; keep any trailing partial line in buffered.
-      const lastNewline = buffered.lastIndexOf("\n");
-      if (lastNewline === -1) return;
-      const ready = buffered.slice(0, lastNewline + 1);
-      buffered = buffered.slice(lastNewline + 1);
-
-      const rewritten = ready.replace(SSE_LINE_RE, (line, json: string) => {
-        if (json.trim() === "[DONE]") return line;
-        try {
-          const obj = JSON.parse(json);
-          let touched = false;
-          for (const choice of obj.choices ?? []) {
-            const delta = choice.delta;
-            if (
-              delta &&
-              typeof delta.reasoning === "string" &&
-              delta.reasoning.length > 0 &&
-              !delta.content
-            ) {
-              delta.content = delta.reasoning;
-              delete delta.reasoning;
-              touched = true;
-            }
-          }
-          return touched ? `data: ${JSON.stringify(obj)}` : line;
-        } catch {
-          return line;
-        }
-      });
-      controller.enqueue(encoder.encode(rewritten));
-    },
-    flush(controller) {
-      if (buffered.length > 0) {
-        controller.enqueue(encoder.encode(buffered));
-        buffered = "";
-      }
-    },
-  });
-
-  return new Response(res.body.pipeThrough(transform), {
-    status: res.status,
-    statusText: res.statusText,
-    headers: res.headers,
-  });
-}
 
 type ReqBody = {
   messages?: UIMessage[];
@@ -144,7 +59,7 @@ export async function POST(req: Request) {
   let firstChunkAt: number | null = null;
 
   const result = streamText({
-    model: ollama(CHAT_MODEL),
+    model: ollamaProvider(CHAT_MODEL),
     system: SYSTEM_PROMPT,
     messages: convertToCoreMessages(messages),
     tools,

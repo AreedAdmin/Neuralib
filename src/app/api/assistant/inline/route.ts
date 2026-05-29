@@ -1,81 +1,11 @@
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { streamText } from "ai";
 import { NextResponse } from "next/server";
-import { CHAT_MODEL, OLLAMA_BASE_URL } from "@/lib/ai/ollama";
+import { CHAT_MODEL, ollamaProvider } from "@/lib/ai/ollama";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
-
-// Same Gemma-on-Ollama SSE shim as /api/assistant/chat — Ollama's OpenAI
-// proxy emits the actual text under `delta.reasoning`, which the AI SDK
-// ignores. Promote it back to `delta.content`.
-const SSE_LINE_RE = /^data: (.+)$/gm;
-
-async function rewriteReasoningAsContent(
-  url: string | URL | Request,
-  init?: RequestInit
-): Promise<Response> {
-  const res = await fetch(url, init);
-  const ct = res.headers.get("content-type") ?? "";
-  if (!res.body || !ct.includes("text/event-stream")) return res;
-
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let buffered = "";
-
-  const transform = new TransformStream<Uint8Array, Uint8Array>({
-    transform(chunk, controller) {
-      buffered += decoder.decode(chunk, { stream: true });
-      const lastNewline = buffered.lastIndexOf("\n");
-      if (lastNewline === -1) return;
-      const ready = buffered.slice(0, lastNewline + 1);
-      buffered = buffered.slice(lastNewline + 1);
-
-      const rewritten = ready.replace(SSE_LINE_RE, (line, json: string) => {
-        if (json.trim() === "[DONE]") return line;
-        try {
-          const obj = JSON.parse(json);
-          let touched = false;
-          for (const choice of obj.choices ?? []) {
-            const delta = choice.delta;
-            if (
-              delta &&
-              typeof delta.reasoning === "string" &&
-              delta.reasoning.length > 0 &&
-              !delta.content
-            ) {
-              delta.content = delta.reasoning;
-              delete delta.reasoning;
-              touched = true;
-            }
-          }
-          return touched ? `data: ${JSON.stringify(obj)}` : line;
-        } catch {
-          return line;
-        }
-      });
-      controller.enqueue(encoder.encode(rewritten));
-    },
-    flush(controller) {
-      if (buffered.length > 0) controller.enqueue(encoder.encode(buffered));
-    },
-  });
-
-  return new Response(res.body.pipeThrough(transform), {
-    status: res.status,
-    statusText: res.statusText,
-    headers: res.headers,
-  });
-}
-
-const ollama = createOpenAICompatible({
-  name: "ollama",
-  baseURL: `${OLLAMA_BASE_URL}/v1`,
-  apiKey: "ollama",
-  fetch: rewriteReasoningAsContent,
-});
 
 const SYSTEM_PROMPT = `You are an inline LaTeX assistant embedded inside ONE card of the user's Neurolib knowledge library.
 
@@ -178,7 +108,7 @@ export async function POST(req: Request) {
     .join("\n");
 
   const result = streamText({
-    model: ollama(CHAT_MODEL),
+    model: ollamaProvider(CHAT_MODEL),
     system: SYSTEM_PROMPT,
     prompt: userPrompt,
   });
