@@ -1,31 +1,29 @@
 "use server";
 
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export async function sendMagicLink(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim();
-  if (!email) {
-    redirect("/login?error=" + encodeURIComponent("Please enter your email."));
-  }
-
+export async function signIn(email: string, password: string) {
   const supabase = await createClient();
-  const headerList = await headers();
-  const host = headerList.get("host");
-  const proto = headerList.get("x-forwarded-proto") ?? "http";
-  const origin = host ? `${proto}://${host}` : "";
 
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${origin}/auth/callback`,
-    },
-  });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    redirect("/login?error=" + encodeURIComponent(error.message));
+    return { error: error.message };
   }
 
-  redirect("/login?sent=" + encodeURIComponent(email));
+  return { success: true };
+}
+
+export async function signUp(email: string, password: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.signUp({ email, password });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  // When "Confirm email" is disabled in Supabase, signUp returns a live session
+  // and the user is logged in immediately. Otherwise they must confirm by email.
+  return { success: true };
 }
